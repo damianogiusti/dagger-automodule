@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'kotlin'
     id 'kotlin-kapt'
+    id 'maven-publish'
 }
 
 dependencies {
@@ -19,4 +20,16 @@ dependencies {
     implementation project(":annotations")
 
     testImplementation "junit:junit:4.12"
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = "com.damianogiusti"
+            artifactId = "automodule-processor"
+            version = props.versionName
+
+            from components.java
+        }
+    }
 }
