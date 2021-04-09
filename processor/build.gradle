@@ -14,7 +14,9 @@ dependencies {
 
     implementation "com.squareup:kotlinpoet:1.5.0"
 
-    implementation "com.google.dagger:hilt-core:2.29.1-alpha"
+    compileOnly "com.google.dagger:hilt-core:2.29.1-alpha"
 
     implementation project(":annotations")
+
+    testImplementation "junit:junit:4.12"
 }

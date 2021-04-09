@@ -2,7 +2,6 @@ package com.damianogiusti.automodule.processor
 
 import com.damianogiusti.automodule.annotations.AutoModule
 import com.google.auto.service.AutoService
-import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
@@ -16,7 +15,6 @@ import dagger.Module
 import dagger.hilt.migration.DisableInstallInCheck
 import net.ltgt.gradle.incap.IncrementalAnnotationProcessor
 import net.ltgt.gradle.incap.IncrementalAnnotationProcessorType
-import javax.annotation.Generated
 import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.Filer
 import javax.annotation.processing.Messager
@@ -64,6 +62,7 @@ class AutoModuleProcessor : AbstractProcessor() {
         val typeSpec: TypeSpec
     )
 
+    private val platform: Platform = Platform.get()
     private var filer: Filer? = null
     private var messager: Messager? = null
 
@@ -123,12 +122,12 @@ class AutoModuleProcessor : AbstractProcessor() {
         val moduleName = "AutoModule$moduleClassSimpleName"
         val typeSpec = TypeSpec
             .interfaceBuilder(moduleName)
-            .addModifiers(KModifier.INTERNAL)
             .addAnnotation(Module::class.java)
-            .addAnnotation(DisableInstallInCheck::class.java)
-            .addAnnotation(AnnotationSpec.builder(Generated::class)
-                .addMember("\"${javaClass.name}\"")
-                .build())
+            .apply {
+                if (platform.isHiltPresent()) {
+                    addAnnotation(DisableInstallInCheck::class.java)
+                }
+            }
             .addFunctions(functions)
 
         return GeneratedModule(moduleName, outPackageName, typeSpec.build())
