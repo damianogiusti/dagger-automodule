@@ -1,6 +1,7 @@
 package com.damianogiusti.automodule.processor
 
 import com.damianogiusti.automodule.annotations.AutoModule
+import com.damianogiusti.automodule.annotations.ModuleVisibility
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
@@ -85,7 +86,18 @@ class AutoModuleProcessor : AbstractProcessor() {
 
         val daggerModuleTypeSpecs = classesByModule.map { (moduleClass, annotatedClasses) ->
             val moduleBindingMethods = annotatedClasses.mapNotNull { annotatedClass -> createBindsMethodOrNull(annotatedClass) }
-            createModuleTypeSpec(moduleClass, moduleBindingMethods)
+            val annotatedClassesVisibilitySet = annotatedClasses
+                .map { it.annotation().moduleVisibility }
+                .toSet()
+            if (annotatedClassesVisibilitySet.size != 1) {
+                messager?.printMessage(Diagnostic.Kind.ERROR, "Must have only one visibility for the same module", moduleClass)
+                return false
+            }
+            createModuleTypeSpec(
+                moduleClass,
+                moduleBindingMethods,
+                annotatedClassesVisibilitySet.first()
+            )
         }
 
         daggerModuleTypeSpecs.forEach { generatedModule ->
@@ -116,12 +128,17 @@ class AutoModuleProcessor : AbstractProcessor() {
         }
     }
 
-    private fun createModuleTypeSpec(moduleClass: TypeElement, functions: List<FunSpec>): GeneratedModule {
+    private fun createModuleTypeSpec(
+        moduleClass: TypeElement,
+        functions: List<FunSpec>,
+        moduleVisibility: ModuleVisibility
+    ): GeneratedModule {
         val moduleClassName = moduleClass.asClassName()
         val (outPackageName, moduleClassSimpleName) = moduleClassName.toPackageAndName()
         val moduleName = "AutoModule$moduleClassSimpleName"
         val typeSpec = TypeSpec
             .interfaceBuilder(moduleName)
+            .addModifiers(moduleVisibility.asKModifier())
             .addAnnotation(Module::class.java)
             .apply {
                 if (platform.isHiltPresent()) {
@@ -163,6 +180,13 @@ class AutoModuleProcessor : AbstractProcessor() {
 
     private fun Filer.createOutFile(packageName: String, name: String) =
         createResource(StandardLocation.SOURCE_OUTPUT, packageName, "$name.kt")
+
+    private fun ModuleVisibility.asKModifier() = when(this) {
+        ModuleVisibility.PRIVATE -> KModifier.PRIVATE
+        ModuleVisibility.PUBLIC -> KModifier.PUBLIC
+        ModuleVisibility.INTERNAL -> KModifier.INTERNAL
+        ModuleVisibility.PROTECTED -> KModifier.PROTECTED
+    }
 
     override fun getSupportedSourceVersion(): SourceVersion {
         return SourceVersion.latestSupported()
