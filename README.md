@@ -82,6 +82,32 @@ interface SampleModule : AutoModuleSampleModule {
 
 Add your module to your desired Component, or use the `@InstallIn` annotation provided by **Hilt**.
 
+You can also choose the visibility of your resulting module adding the `ModuleVisibility` to the 
+`AutoModule` annotation:
+
+```kotlin
+interface GreetingsProvider {
+    fun greet(): String
+}
+
+@AutoModule(SampleModule::class, ModuleVisibility.INTERNAL)
+internal class ProgrammerGreetingsProvider @Inject constructor() : Greeter {  
+    override fun greet(): String = "Hello, world!"
+}
+```
+
+> The default visibility of a module is `ModuleVisibility.PUBLIC`
+
+Available visibilities:
+```
+* PRIVATE
+* PUBLIC
+* PROTECTED
+* INTERNAL
+```
+
+> ⚠️ AutoModule supports only one visibility per module
+
 ## Author
 
 Damiano Giusti - [damianogiusti.com](https://damianogiusti.com/)
