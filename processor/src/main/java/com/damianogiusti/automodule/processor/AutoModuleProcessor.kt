@@ -86,18 +86,7 @@ class AutoModuleProcessor : AbstractProcessor() {
 
         val daggerModuleTypeSpecs = classesByModule.map { (moduleClass, annotatedClasses) ->
             val moduleBindingMethods = annotatedClasses.mapNotNull { annotatedClass -> createBindsMethodOrNull(annotatedClass) }
-            val annotatedClassesVisibilitySet = annotatedClasses
-                .map { it.annotation().moduleVisibility }
-                .toSet()
-            if (annotatedClassesVisibilitySet.size != 1) {
-                messager?.printMessage(Diagnostic.Kind.ERROR, "Must have only one visibility for the same module", moduleClass)
-                return false
-            }
-            createModuleTypeSpec(
-                moduleClass,
-                moduleBindingMethods,
-                annotatedClassesVisibilitySet.first()
-            )
+            createModuleTypeSpec(moduleClass, moduleBindingMethods)
         }
 
         daggerModuleTypeSpecs.forEach { generatedModule ->
@@ -108,12 +97,17 @@ class AutoModuleProcessor : AbstractProcessor() {
     }
 
     private fun createBindsMethodOrNull(annotatedClass: TypeElement): FunSpec? {
+        val annotatedClassVisibility = annotatedClass.annotation().moduleVisibility
         val parentInterface = annotatedClass.interfaces.singleOrNull()
         return if (parentInterface == null) {
             messager?.printMessage(Diagnostic.Kind.ERROR, "Must have only one parent interface", annotatedClass)
             null
         } else {
-            createBindsFunctionSpec(annotatedClass.asClassName(), parentInterface.asTypeName())
+            createBindsFunctionSpec(
+                annotatedClass.asClassName(),
+                parentInterface.asTypeName(),
+                annotatedClassVisibility.asKModifier()
+            )
         }
     }
 
@@ -130,15 +124,14 @@ class AutoModuleProcessor : AbstractProcessor() {
 
     private fun createModuleTypeSpec(
         moduleClass: TypeElement,
-        functions: List<FunSpec>,
-        moduleVisibility: ModuleVisibility
+        functions: List<FunSpec>
     ): GeneratedModule {
         val moduleClassName = moduleClass.asClassName()
         val (outPackageName, moduleClassSimpleName) = moduleClassName.toPackageAndName()
         val moduleName = "AutoModule$moduleClassSimpleName"
         val typeSpec = TypeSpec
-            .interfaceBuilder(moduleName)
-            .addModifiers(moduleVisibility.asKModifier())
+            .classBuilder(moduleName)
+            .addModifiers(KModifier.ABSTRACT)
             .addAnnotation(Module::class.java)
             .apply {
                 if (platform.isHiltPresent()) {
@@ -154,9 +147,13 @@ class AutoModuleProcessor : AbstractProcessor() {
         dropLast(1).joinToString(separator = ".") to last()
     }
 
-    private fun createBindsFunctionSpec(concreteClass: ClassName, abstractClass: TypeName) = FunSpec
+    private fun createBindsFunctionSpec(
+        concreteClass: ClassName,
+        abstractClass: TypeName,
+        kModifier: KModifier
+    ) = FunSpec
         .builder("binds${concreteClass.simpleName}")
-        .addModifiers(KModifier.ABSTRACT)
+        .addModifiers(KModifier.ABSTRACT, kModifier)
         .addAnnotation(Binds::class.java)
         .addParameter("impl", concreteClass)
         .returns(abstractClass)
