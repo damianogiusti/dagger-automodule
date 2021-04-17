@@ -6,4 +6,4 @@ import dagger.Module
  * Created by Federico Monti on 14/04/2021.
  */
 @Module
-internal interface SampleVisibilityModule : AutoModuleSampleVisibilityModule
+abstract class SampleVisibilityModule : AutoModuleSampleVisibilityModule()
