@@ -1,6 +1,7 @@
 package com.damianogiusti.automodule.processor
 
 import com.damianogiusti.automodule.annotations.AutoModule
+import com.damianogiusti.automodule.annotations.ModuleVisibility
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
@@ -96,12 +97,17 @@ class AutoModuleProcessor : AbstractProcessor() {
     }
 
     private fun createBindsMethodOrNull(annotatedClass: TypeElement): FunSpec? {
+        val annotatedClassVisibility = annotatedClass.annotation().moduleVisibility
         val parentInterface = annotatedClass.interfaces.singleOrNull()
         return if (parentInterface == null) {
             messager?.printMessage(Diagnostic.Kind.ERROR, "Must have only one parent interface", annotatedClass)
             null
         } else {
-            createBindsFunctionSpec(annotatedClass.asClassName(), parentInterface.asTypeName())
+            createBindsFunctionSpec(
+                annotatedClass.asClassName(),
+                parentInterface.asTypeName(),
+                annotatedClassVisibility.asKModifier()
+            )
         }
     }
 
@@ -116,12 +122,16 @@ class AutoModuleProcessor : AbstractProcessor() {
         }
     }
 
-    private fun createModuleTypeSpec(moduleClass: TypeElement, functions: List<FunSpec>): GeneratedModule {
+    private fun createModuleTypeSpec(
+        moduleClass: TypeElement,
+        functions: List<FunSpec>
+    ): GeneratedModule {
         val moduleClassName = moduleClass.asClassName()
         val (outPackageName, moduleClassSimpleName) = moduleClassName.toPackageAndName()
         val moduleName = "AutoModule$moduleClassSimpleName"
         val typeSpec = TypeSpec
-            .interfaceBuilder(moduleName)
+            .classBuilder(moduleName)
+            .addModifiers(KModifier.ABSTRACT)
             .addAnnotation(Module::class.java)
             .apply {
                 if (platform.isHiltPresent()) {
@@ -137,9 +147,13 @@ class AutoModuleProcessor : AbstractProcessor() {
         dropLast(1).joinToString(separator = ".") to last()
     }
 
-    private fun createBindsFunctionSpec(concreteClass: ClassName, abstractClass: TypeName) = FunSpec
+    private fun createBindsFunctionSpec(
+        concreteClass: ClassName,
+        abstractClass: TypeName,
+        kModifier: KModifier
+    ) = FunSpec
         .builder("binds${concreteClass.simpleName}")
-        .addModifiers(KModifier.ABSTRACT)
+        .addModifiers(KModifier.ABSTRACT, kModifier)
         .addAnnotation(Binds::class.java)
         .addParameter("impl", concreteClass)
         .returns(abstractClass)
@@ -163,6 +177,13 @@ class AutoModuleProcessor : AbstractProcessor() {
 
     private fun Filer.createOutFile(packageName: String, name: String) =
         createResource(StandardLocation.SOURCE_OUTPUT, packageName, "$name.kt")
+
+    private fun ModuleVisibility.asKModifier() = when(this) {
+        ModuleVisibility.PRIVATE -> KModifier.PRIVATE
+        ModuleVisibility.PUBLIC -> KModifier.PUBLIC
+        ModuleVisibility.INTERNAL -> KModifier.INTERNAL
+        ModuleVisibility.PROTECTED -> KModifier.PROTECTED
+    }
 
     override fun getSupportedSourceVersion(): SourceVersion {
         return SourceVersion.latestSupported()

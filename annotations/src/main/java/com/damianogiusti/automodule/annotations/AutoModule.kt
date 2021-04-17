@@ -1,5 +1,6 @@
 package com.damianogiusti.automodule.annotations
 
+import java.lang.reflect.Modifier
 import kotlin.reflect.KClass
 
 /**
@@ -14,4 +15,7 @@ import kotlin.reflect.KClass
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
-annotation class AutoModule(val module: KClass<*>)
+annotation class AutoModule(
+    val module: KClass<*>,
+    val moduleVisibility: ModuleVisibility = ModuleVisibility.PUBLIC
+)
