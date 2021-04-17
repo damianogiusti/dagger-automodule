@@ -37,7 +37,7 @@ First, you need to create an empty placeholder module, that will be used as a ta
 
 ```kotlin
 @Module
-interface SampleModule {
+abstract class SampleModule {
 }
 ```
 
@@ -64,9 +64,9 @@ import dagger.Binds
 import dagger.Module
 
 @Module
-interface AutoModuleSampleModule {
+abstract class AutoModuleSampleModule {
   @Binds
-  fun bindsProgrammerGreetingsProvider(impl: ProgrammerGreetingsProvider): GreetingsProvider
+  abstract fun bindsProgrammerGreetingsProvider(impl: ProgrammerGreetingsProvider): GreetingsProvider
 }
 ```
 
@@ -76,14 +76,14 @@ Last, you need to use the generated module as **parent interface** of your targe
 
 ```kotlin
 @Module
-interface SampleModule : AutoModuleSampleModule {
+abstract class SampleModule : AutoModuleSampleModule() {
 }
 ```
 
 Add your module to your desired Component, or use the `@InstallIn` annotation provided by **Hilt**.
 
-You can also choose the visibility of your resulting module adding the `ModuleVisibility` to the 
-`AutoModule` annotation:
+You can also choose the visibility of binding methods in your generated module adding 
+the `ModuleVisibility` to the `AutoModule` annotation:
 
 ```kotlin
 interface GreetingsProvider {
@@ -96,7 +96,22 @@ internal class ProgrammerGreetingsProvider @Inject constructor() : Greeter {
 }
 ```
 
-> The default visibility of a module is `ModuleVisibility.PUBLIC`
+The generated code will be:
+
+```kotlin
+// GENERATED
+
+import dagger.Binds
+import dagger.Module
+
+@Module
+abstract class AutoModuleSampleModule {
+  @Binds
+  internal abstract fun bindsProgrammerGreetingsProvider(impl: ProgrammerGreetingsProvider): GreetingsProvider
+}
+```
+
+> The default visibility of binding methods is `ModuleVisibility.PUBLIC`
 
 Available visibilities:
 ```
@@ -105,8 +120,6 @@ Available visibilities:
 * PROTECTED
 * INTERNAL
 ```
-
-> ⚠️ AutoModule supports only one visibility per module
 
 ## Author
 
